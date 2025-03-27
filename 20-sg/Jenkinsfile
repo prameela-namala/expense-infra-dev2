@@ -44,15 +44,15 @@ pipeline {
                 }
             }
         }
-        // stage('Trigger sg') {
-        //      when {
-        //         expression { params.ACTION == 'apply' }
-        //     }
-        //     steps{
-        //         build job: '20-sg', parameters: [string(name: 'ACTION', value: "apply")], wait: false
-        //     }
+        stage('Destroy VPC') {
+             when {
+                expression { params.ACTION == 'destroy' }
+            }
+            steps{
+                build job: '10-vpc', parameters: [string(name: 'ACTION', value: "destroy")], wait: false
+            }
         
-        //     }
+            }
         
     }
 
