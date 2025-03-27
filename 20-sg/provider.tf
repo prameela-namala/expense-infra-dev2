@@ -8,9 +8,9 @@ terraform {
 
   backend "s3" {
     bucket = "expense-infra-dev2"
-    key    = "infra-lock-2"
+    key    = "expense-sg"
     region = "us-east-1"
-    dynamodb_table = "81s-locking"
+    dynamodb_table = "infra-lock-2"
   }
 }
 
