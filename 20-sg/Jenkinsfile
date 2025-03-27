@@ -1,73 +1,59 @@
 pipeline {
     agent {
-        label 'AGENT-1'
+        label 'agent-1'
     }
     options {
         // Timeout counter starts BEFORE agent is allocated
-        timeout(time: 10, unit: 'MINUTES')
+        timeout(time: 30, unit: 'MINUTES')
         disableConcurrentBuilds()
-        //retry(1)
+        ansiColor('xterm')
+        // retry(1)
     }
     parameters {
-        string(name: 'PERSON', defaultValue: 'Mr Jenkins', description: 'Who should I say hello to?')
-
-        text(name: 'BIOGRAPHY', defaultValue: '', description: 'Enter some information about the person')
-
-        booleanParam(name: 'TOGGLE', defaultValue: true, description: 'Toggle this value')
-
-        choice(name: 'CHOICE', choices: ['One', 'Two', 'Three'], description: 'Pick something')
-
-        password(name: 'PASSWORD', defaultValue: 'SECRET', description: 'Enter a password')
+        choice(name: 'ACTION', choices: ['apply', 'destroy'], description: 'Select Action')
     }
     stages {
-        stage('Build') {
+        stage('Init and Plan') {
             steps {
-                sh "echo this is build"
-                //sh "sleep 10"
-            }
-        }
-        stage('Test') {
-            steps { 
-                sh "echo this is test"
-            }
-        }
-        stage('Deploy') {
-            when{
-
-                expression {env.GIT_BRANCH != 'origin/main'}
-            }
-            steps {
-                sh "echo this is deploy"
-                //error "pipeline failed"
-            }
-        }
-        stage('print params'){
-            steps{
-                echo "Hello ${params.PERSON}"
-
-                echo "Biography: ${params.BIOGRAPHY}"
-
-                echo "Toggle: ${params.TOGGLE}"
-
-                echo "Choice: ${params.CHOICE}"
-
-                echo "Password: ${params.PASSWORD}"
-            } 
-        }
-
-        stage('approve') {
-            input {
-                message "Should we continue?"
-                ok "Yes, we should."
-                submitter "alice,bob"
-                parameters {
-                    string(name: 'PERSON', defaultValue: 'Mr Jenkins', description: 'Who should I say hello to?')
+                withAWS(region: 'us-east-1', credentials: 'as-creds') {
+                    sh """
+                        cd 20-sg
+                        terraform init -reconfigure
+                        terraform plan -out=tfplan
+                    """
                 }
             }
+        }
+        stage('apply or destroy') {
+            input {
+                message "Should we continue? to ${params.ACTION}"
+                ok "Yes, we should."
+            }
             steps {
-                echo "Hello, ${PERSON}, nice to meet you."
+                withAWS(region: 'us-east-1', credentials: 'as-creds') {
+                    sh """
+                        cd 20-sg
+                        if [ "${params.ACTION}" == "apply" ]
+                         then
+                            terraform apply -auto-approve tfplan
+                        elif [ "${params.ACTION}" == "destroy" ]
+                         then
+                            terraform destroy -auto-approve
+                        fi
+                    """
+                }
             }
         }
+        // stage('Trigger sg') {
+        //      when {
+        //         expression { params.ACTION == 'apply' }
+        //     }
+        //     steps{
+        //         build job: '20-sg', parameters: [string(name: 'ACTION', value: "apply")], wait: false
+        //     }
+        
+        //     }
+        
     }
 
     post {
@@ -77,7 +63,6 @@ pipeline {
         }
 
         success {
-
             echo "this section runs when pipeline success"
         }
 
