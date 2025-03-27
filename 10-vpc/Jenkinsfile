@@ -18,6 +18,7 @@ pipeline {
     stages {
         stage('Init and Plan') {
             steps {
+        
                 withAWS(region: 'us-east-1' , credentials: 'as-creds'){
                 sh """
                     cd 10-vpc
@@ -30,6 +31,11 @@ pipeline {
         }
             }
         stage('apply or destroy') {
+             input {
+                message "Should we continue? to ${params.ACTION}"
+                ok "Yes, we should."
+                
+                }
              steps {
                 withAWS(region: 'us-east-1' , credentials: 'as-creds'){
                 sh """
