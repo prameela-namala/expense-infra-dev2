@@ -54,36 +54,10 @@ pipeline {
             
         }
             }
+        stage('Trigger sg') {
+            build job: '20-sg',parameters: [[$class: 'ExtendedChoiceParameterValue', name: 'ACTION']]
     }
-        // stage('Test') {
-        //     steps { 
-        //         sh "echo this is test"
-        //     }
-        // }
-        // stage('Deploy') {
-        //     when{
-
-        //         expression {env.GIT_BRANCH != 'origin/main'}
-        //     }
-        //     steps {
-        //         sh "echo this is deploy"
-        //         //error "pipeline failed"
-        //     }
-        // }
-        // stage('print params'){
-        //     steps{
-        //         echo "Hello ${params.PERSON}"
-
-        //         echo "Biography: ${params.BIOGRAPHY}"
-
-        //         echo "Toggle: ${params.TOGGLE}"
-
-        //         echo "Choice: ${params.CHOICE}"
-
-        //         echo "Password: ${params.PASSWORD}"
-        //     } 
-        // }
-
+        
        
     
 
