@@ -43,7 +43,9 @@ pipeline {
             }
         }
         stage('Trigger sg') {
+            steps{
             build job: '20-sg', parameters: [string(name: 'ACTION', value: "apply")]
+        }
         }
     }
 
