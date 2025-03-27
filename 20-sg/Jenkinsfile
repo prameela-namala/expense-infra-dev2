@@ -53,6 +53,15 @@ pipeline {
             }
         
             }
+        stage('create bastion') {
+             when {
+                expression { params.ACTION == 'apply' }
+            }
+            steps{
+                build job: '', parameters: [string(name: 'ACTION', value: "destroy")], wait: false
+            }
+        
+            }
         
     }
 
