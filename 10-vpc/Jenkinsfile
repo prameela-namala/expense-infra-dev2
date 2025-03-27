@@ -43,10 +43,15 @@ pipeline {
             }
         }
         stage('Trigger sg') {
+             when {
+                expression { params.ACTION == 'apply' }
+            }
             steps{
-            build job: '20-sg', parameters: [string(name: 'ACTION', value: "apply")]
-        }
-        }
+                build job: '10-sg', parameters: [string(name: 'ACTION', value: "apply")], wait: false
+            }
+        
+            }
+        
     }
 
     post {
