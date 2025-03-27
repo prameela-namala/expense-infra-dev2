@@ -8,7 +8,7 @@ terraform {
 
   backend "s3" {
     bucket = "expense-infra-dev2"
-    key    = "expense-vpc-dev"
+    key    = "expense-vpc"
     region = "us-east-1"
     dynamodb_table = "infra-lock-2"
   }
