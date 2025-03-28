@@ -7,13 +7,11 @@ pipeline {
         disableConcurrentBuilds()
         ansiColor('xterm')
     }
-    // environment {
-    //     DEBUG = 'true'
-    // }
 
     parameters {
         choice(name: 'ACTION', choices: ['apply', 'destroy'], description: 'Select Action')
     }
+
     stages {
         stage('Init and Plan') {
             steps {
@@ -28,10 +26,6 @@ pipeline {
         }
 
         stage('Apply or Destroy') {
-            /* input {
-                message "Should we continue to ${params.ACTION}"
-                ok "Yes, we should."
-            } */
             steps {
                 withAWS(region: 'us-east-1', credentials: 'aws-creds') {
                     sh """
@@ -47,14 +41,36 @@ pipeline {
                 }
             }
         }
-        stage ('Destroy VPC') {
+
+        // Destroy Resources stage with a for loop to destroy in reverse order
+        stage('Destroy Resources') {
             when {
                 expression { params.ACTION == 'destroy' }
             }
-            steps{
-                build job: '10-vpc', parameters: [string(name: 'ACTION', value: "destroy")], wait: false
+            steps {
+                script {
+                    // List of resource jobs that need to be destroyed
+                    def resources = [
+                        '10-vpc', 
+                        '30-bastion', 
+                        '40-rds', 
+                        '50-eks', 
+                        '80-ecr', 
+                        '60-acm', 
+                        '70-alb', 
+                        '90-cdn'
+                    ]
+                    
+                    // Use a for loop to iterate through the resources in reverse order
+                    for (int i = resources.size() - 1; i >= 0; i--) {
+                        def resource = resources[i]
+                        // Trigger the respective resource job with the ACTION as "destroy"
+                        build job: resource, parameters: [string(name: 'ACTION', value: "destroy")], wait: false
+                    }
+                }
             }
         }
+
         stage('Parallel') {
             when {
                 expression { params.ACTION == 'apply' }
@@ -75,7 +91,6 @@ pipeline {
                         build job: '50-eks', parameters: [string(name: 'ACTION', value: "apply")], wait: false
                     }
                 }
-                
                 stage('ECR') {
                     steps {
                         build job: '80-ecr', parameters: [string(name: 'ACTION', value: "apply")], wait: false
@@ -105,21 +120,19 @@ pipeline {
                     }
                 }
             }
-                
         }
-
     }
 
     post {
-        always{
+        always {
             echo "This sections runs always"
             deleteDir()
         }
-        success{
-            echo "This section run when pipeline success"
+        success {
+            echo "This section runs when pipeline success"
         }
-        failure{
-            echo "This section run when pipeline failure"
+        failure {
+            echo "This section runs when pipeline failure"
         }
     }
 }
