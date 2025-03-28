@@ -44,15 +44,7 @@ pipeline {
                 }
             }
         }
-        // stage('Destroy VPC') {
-        //      when {
-        //         expression { params.ACTION == 'destroy' }
-        //     }
-        //     steps{
-        //         build job: '10-vpc', parameters: [string(name: 'ACTION', value: "destroy")], wait: false
-        //     }
         
-        //     }
         
     }
 

@@ -17,7 +17,7 @@ pipeline {
             steps {
                 withAWS(region: 'us-east-1', credentials: 'as-creds') {
                     sh """
-                        cd 20-sg
+                        cd 70-alb
                         terraform init -reconfigure
                         terraform plan -out=tfplan
                     """
@@ -25,14 +25,14 @@ pipeline {
             }
         }
         stage('apply or destroy') {
-            input {
-                message "Should we continue? to ${params.ACTION}"
-                ok "Yes, we should."
-            }
+            // input {
+            //     message "Should we continue? to ${params.ACTION}"
+            //     ok "Yes, we should."
+            // }
             steps {
                 withAWS(region: 'us-east-1', credentials: 'as-creds') {
                     sh """
-                        cd 20-sg
+                        cd 70-alb
                         if [ "${params.ACTION}" == "apply" ]
                          then
                             terraform apply -auto-approve tfplan
@@ -44,42 +44,7 @@ pipeline {
                 }
             }
         }
-        stage('Destroy VPC') {
-             when {
-                expression { params.ACTION == 'destroy' }
-            }
-            steps{
-                build job: '10-vpc', parameters: [string(name: 'ACTION', value: "destroy")], wait: false
-            }
         
-            }
-        stage('Parallel In Sequential') {
-            when {
-                expression { params.ACTION == 'apply' }
-            }
-                    parallel {
-                        stage('bastion') {
-                            steps {
-                               build job: '30-bastion', parameters: [string(name: 'ACTION', value: "apply")], wait: false
-
-                            }
-                        }
-                        stage('eks') {
-                            steps {
-                                build job: '50-eks', parameters: [string(name: 'ACTION', value: "apply")], wait: false
-
-                            }
-                        }
-                    }
-                
-                        // stage('eks') {
-                        //     steps {
-                        //         build job: '50-eks', parameters: [string(name: 'ACTION', value: "apply")], wait: false
-
-                        //     }
-                        // }
-                    
-                }
         
     }
 

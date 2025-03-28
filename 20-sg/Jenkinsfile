@@ -70,17 +70,40 @@ pipeline {
 
                             }
                         }
+                        stage('RDS') {
+                            steps {
+                                build job: '40-rds', parameters: [string(name: 'ACTION', value: "apply")], wait: false
+
+                            }
+                        }
+                        stage('ecr') {
+                            steps {
+                                build job: '80-ecr', parameters: [string(name: 'ACTION', value: "apply")], wait: false
+
+                            }
+                        }
+
                     }
                 
-                        // stage('eks') {
-                        //     steps {
-                        //         build job: '50-eks', parameters: [string(name: 'ACTION', value: "apply")], wait: false
+                    Sequential{
+                        stage('60-acm') {
+                            steps {
+                               build job: '60-acm', parameters: [string(name: 'ACTION', value: "apply")], wait: false
 
-                        //     }
-                        // }
+                            }
+                } 
+                        stage('70-alb') {
+                            steps {
+                               build job: '70-alb', parameters: [string(name: 'ACTION', value: "apply")], wait: false
+
+                            }  
                     
                 }
-        
+                        stage('90-cdn') {
+                            steps {
+                               build job: '30-bastion', parameters: [string(name: 'ACTION', value: "apply")], wait: false
+
+                            }
     }
 
     post {
