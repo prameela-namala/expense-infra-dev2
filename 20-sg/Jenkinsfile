@@ -1,21 +1,23 @@
 pipeline {
     agent {
-        label 'agent-1'
+        label 'AGENT-1'
     }
-    options {
-        // Timeout counter starts BEFORE agent is allocated
+    options{
         timeout(time: 30, unit: 'MINUTES')
         disableConcurrentBuilds()
         ansiColor('xterm')
-        // retry(1)
     }
+    // environment {
+    //     DEBUG = 'true'
+    // }
+
     parameters {
         choice(name: 'ACTION', choices: ['apply', 'destroy'], description: 'Select Action')
     }
     stages {
         stage('Init and Plan') {
             steps {
-                withAWS(region: 'us-east-1', credentials: 'as-creds') {
+                withAWS(region: 'us-east-1', credentials: 'aws-creds') {
                     sh """
                         cd 20-sg
                         terraform init -reconfigure
@@ -24,100 +26,100 @@ pipeline {
                 }
             }
         }
-        stage('apply or destroy') {
-            input {
-                message "Should we continue? to ${params.ACTION}"
+
+        stage('Apply or Destroy') {
+            /* input {
+                message "Should we continue to ${params.ACTION}"
                 ok "Yes, we should."
-            }
+            } */
             steps {
-                withAWS(region: 'us-east-1', credentials: 'as-creds') {
+                withAWS(region: 'us-east-1', credentials: 'aws-creds') {
                     sh """
                         cd 20-sg
-                        if [ "${params.ACTION}" == "apply" ]
-                         then
+                        if [ ${params.ACTION} == 'apply' ]
+                        then
                             terraform apply -auto-approve tfplan
-                        elif [ "${params.ACTION}" == "destroy" ]
-                         then
+                        elif [ ${params.ACTION} == 'destroy' ]
+                        then
                             terraform destroy -auto-approve
                         fi
                     """
                 }
             }
         }
-        stage('Destroy VPC') {
-             when {
+        stage ('Destroy VPC') {
+            when {
                 expression { params.ACTION == 'destroy' }
             }
             steps{
-                build job: '10-vpc', parameters: [string(name: 'ACTION', value: "destroy")], wait: false
+                build job: '00-vpc', parameters: [string(name: 'ACTION', value: "destroy")], wait: false
             }
-        
-            }
-        stage('Parallel In Sequential') {
+        }
+        stage('Parallel') {
             when {
                 expression { params.ACTION == 'apply' }
             }
-                    parallel {
-                        stage('bastion') {
-                            steps {
-                               build job: '30-bastion', parameters: [string(name: 'ACTION', value: "apply")], wait: false
-
-                            }
-                        }
-                        stage('eks') {
-                            steps {
-                                build job: '50-eks', parameters: [string(name: 'ACTION', value: "apply")], wait: false
-
-                            }
-                        }
-                        stage('RDS') {
-                            steps {
-                                build job: '40-rds', parameters: [string(name: 'ACTION', value: "apply")], wait: false
-
-                            }
-                        }
-                        stage('ecr') {
-                            steps {
-                                build job: '80-ecr', parameters: [string(name: 'ACTION', value: "apply")], wait: false
-
-                            }
-                        }
-
+            parallel {
+                stage('Bastion') {
+                    steps {
+                        build job: '20-bastion', parameters: [string(name: 'ACTION', value: "apply")], wait: false
                     }
-                
-                    Sequential{
-                        stage('60-acm') {
-                            steps {
-                               build job: '60-acm', parameters: [string(name: 'ACTION', value: "apply")], wait: false
-
-                            }
-                } 
-                        stage('70-alb') {
-                            steps {
-                               build job: '70-alb', parameters: [string(name: 'ACTION', value: "apply")], wait: false
-
-                            }  
-                    
                 }
-                        stage('90-cdn') {
-                            steps {
-                               build job: '30-bastion', parameters: [string(name: 'ACTION', value: "apply")], wait: false
+                stage('RDS') {
+                    steps {
+                        build job: '30-rds', parameters: [string(name: 'ACTION', value: "apply")], wait: false
+                    }
+                }
+                stage('EKS') {
+                    steps {
+                        build job: '40-eks', parameters: [string(name: 'ACTION', value: "apply")], wait: false
+                    }
+                }
+                
+                stage('ECR') {
+                    steps {
+                        build job: '70-ecr', parameters: [string(name: 'ACTION', value: "apply")], wait: false
+                    }
+                }
+            }
+        }
 
-                            }
+        stage('Sequential') {
+            when {
+                expression { params.ACTION == 'apply' }
+            }
+            stages {
+                stage('ACM') {
+                    steps {
+                        build job: '50-acm', parameters: [string(name: 'ACTION', value: "apply")]
+                    }
+                }
+                stage('ALB') {
+                    steps {
+                        build job: '60-alb', parameters: [string(name: 'ACTION', value: "apply")], wait: false
+                    }
+                }
+                stage('CDN') {
+                    steps {
+                        build job: '80-cdn', parameters: [string(name: 'ACTION', value: "apply")], wait: false
+                    }
+                }
+            }
+                
+        }
+
     }
 
     post {
-        always {
-            echo "this section runs always"
+        always{
+            echo "This sections runs always"
             deleteDir()
         }
-
-        success {
-            echo "this section runs when pipeline success"
+        success{
+            echo "This section run when pipeline success"
         }
-
-        failure {
-            echo "this section runs when pipeline fails"
+        failure{
+            echo "This section run when pipeline failure"
         }
     }
 }
